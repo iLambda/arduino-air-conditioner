@@ -2,24 +2,38 @@
 #include <OneWire.h>
 
 #define CRITICAL_THRESH   7
-#define OK_THRESH         12     
+#define OK_THRESH         18     
 
-const int RS_Pin = 8;
-const int E_Pin = 10;
-const int D4_Pin = 44;
-const int D5_Pin = 46;
-const int D6_Pin = 48;
-const int D7_Pin = 50;
+#define TEMPERATURE_UNDEFINED -32768
+
+const int RS_Pin = 2;
+const int E_Pin = 3;
+const int D4_Pin = 4;
+const int D5_Pin = 5;
+const int D6_Pin = 6;
+const int D7_Pin = 7;
 const int TEMP_Pin = 12;
 
-const int USELESSLED_Pin = 13;
-const int CRITLED_Pin = 14;
-const int OKLED_Pin = 15;
+const int USELESSLED_Pin = A2;
+const int CRITLED_Pin = A1;
+const int OKLED_Pin = A0;
 
-int internalTemperature = 0xFFFF;
-int externalTemperature = 0xFFFF;
+const byte CHAR_DELTA[8] =
+{
+  B00100,
+  B00100,
+  B01010,
+  B01010,
+  B10001,
+  B10001,
+  B11111,
+  B00000
+};
+
+int internalTemperature = TEMPERATURE_UNDEFINED;
+int externalTemperature = TEMPERATURE_UNDEFINED;
 const byte INTERNAL_THERMOMETER[] = { 0x28, 0x9E, 0x9C, 0x1F, 0x00, 0x00, 0x80, 0x04 }; // edit with right 1-wire address
-const byte EXTERNAL_THERMOMETER[] = { 0x28, 0x9E, 0x9C, 0x1F, 0x00, 0x00, 0x80, 0x05 }; // edit with right 1-wire address
+const byte EXTERNAL_THERMOMETER[] = { 0x28, 0xAA, 0x39, 0xA3, 0x0A, 0x00, 0x00, 0xB1 };
 
 LiquidCrystal lcd(RS_Pin, E_Pin, D4_Pin, D5_Pin, D6_Pin, D7_Pin);
 OneWire thermometer(TEMP_Pin);
@@ -27,7 +41,8 @@ OneWire thermometer(TEMP_Pin);
 enum INDICATOR_STATE {
   INDICATOR_USELESS,
   INDICATOR_CRITICAL,
-  INDICATOR_OK
+  INDICATOR_OK,
+  INDICATOR_OFF
 };
 
 void setup() {
@@ -39,23 +54,33 @@ void setup() {
   pinMode(CRITLED_Pin, OUTPUT);
   pinMode(OKLED_Pin, OUTPUT);
   // set their default value
-  
+  setIndicator(INDICATOR_OFF);
   
   // initialize lcd
   lcd.begin(16, 2);
   lcd.clear();
+
+  // create special character
+  lcd.createChar(0, CHAR_DELTA);
+  
   // write UI text
   lcd.setCursor(0, 0);
-  lcd.print("EXTERNAL: " + formatTemperature(externalTemperature));
+  lcd.print("EXT=" + formatTemperature(externalTemperature));
   lcd.setCursor(0, 1);
-  lcd.print("INTERNAL: " + formatTemperature(internalTemperature));
+  lcd.print("INT=" + formatTemperature(internalTemperature));
+  
+  lcd.setCursor(9, 0);
+  lcd.write(byte(0));
+  lcd.print("T=" + formatTemperature(0xFFFF));
+
+  internalTemperature = -12;
 }
 
 void loop() {
   // get temperature
-  internalTemperature = (int)getTemperature(INTERNAL_THERMOMETER);
+  internalTemperature = -12;//(int)getTemperature(INTERNAL_THERMOMETER);
   externalTemperature = (int)getTemperature(EXTERNAL_THERMOMETER);
-
+  
   // check delta temperature and set indicator
   int deltaTemp = externalTemperature - internalTemperature;
   if (deltaTemp >= OK_THRESH) {
@@ -69,11 +94,14 @@ void loop() {
   // wait
   delay(800);
   // write top temp
-  lcd.setCursor(10, 0);
+  lcd.setCursor(4, 0);
   lcd.print(formatTemperature(externalTemperature));
   // write bottom temp
-  lcd.setCursor(10, 1);
+  lcd.setCursor(4, 1);
   lcd.print(formatTemperature(internalTemperature));
+  // write delta
+  lcd.setCursor(12, 0);
+  lcd.print(formatTemperature(deltaTemp));
   
 }
 
@@ -103,12 +131,12 @@ String formatTemperature(int temperature) {
   // create string
   String text;
   // write sign
-  text += (temperature == 0xFFFF ? "" : (temperature > 0 ? "+" : (temperature < 0 ? "-" : "")));
+  text += (temperature == TEMPERATURE_UNDEFINED ? "" : (temperature > 0 ? "+" : (temperature < 0 ? "-" : "")));
   // write temperature
-  text += (temperature == 0xFFFF ? "??" : String(abs(temperature)));
+  text += (temperature == TEMPERATURE_UNDEFINED ? "??" : String(abs(temperature)));
   // write unit
   text += ((char)223);
-  text += "C";
+  //text += "C";
   // pad, length should be 5
   while (text.length() < 5) {
     text += " ";
