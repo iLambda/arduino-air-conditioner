@@ -32,7 +32,7 @@ const byte CHAR_DELTA[8] =
 
 int internalTemperature = TEMPERATURE_UNDEFINED;
 int externalTemperature = TEMPERATURE_UNDEFINED;
-const byte INTERNAL_THERMOMETER[] = { 0x28, 0x9E, 0x9C, 0x1F, 0x00, 0x00, 0x80, 0x04 }; // edit with right 1-wire address
+const byte INTERNAL_THERMOMETER[] = { 0x28, 0x73, 0xA6, 0xA2, 0x0A, 0x00, 0x00, 0xB4 }; // edit with right 1-wire address
 const byte EXTERNAL_THERMOMETER[] = { 0x28, 0xAA, 0x39, 0xA3, 0x0A, 0x00, 0x00, 0xB1 };
 
 LiquidCrystal lcd(RS_Pin, E_Pin, D4_Pin, D5_Pin, D6_Pin, D7_Pin);
@@ -77,8 +77,10 @@ void setup() {
 }
 
 void loop() {
+byte address[8];
+   
   // get temperature
-  internalTemperature = -12;//(int)getTemperature(INTERNAL_THERMOMETER);
+  internalTemperature = (int)getTemperature(INTERNAL_THERMOMETER);
   externalTemperature = (int)getTemperature(EXTERNAL_THERMOMETER);
   
   // check delta temperature and set indicator
